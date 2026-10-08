@@ -44,8 +44,8 @@ async function enterApp(){
   $("#loginView").classList.add("hidden");
   $("#appView").classList.remove("hidden");
   $("#sessionName").textContent=access.nombre;
-  $("#sessionRole").textContent=access.rol==="admin"?"Administrador":access.rol==="gerencia"?"Gerencia":"Consulta";
-  $("#newTaskBtn").classList.toggle("hidden", !["admin","gerencia"].includes(access.rol));
+  $("#sessionRole").textContent=access.rol==="admin"?"Administrador":access.rol==="gerencia"?"Gerencia":access.rol==="bienestar"?"Bienestar":"Consulta";
+  $("#newTaskBtn").classList.toggle("hidden", !["admin","gerencia","bienestar"].includes(access.rol));
   await reload();
 }
 
@@ -77,6 +77,7 @@ function prefillRequester(){
   const name=(state.access?.nombre||"").toLowerCase();
   if(name.includes("laura")) $("#taskGroup").value="Gerente Laura";
   else if(name.includes("conny")||name.includes("constanza")) $("#taskGroup").value="Gerente Conny";
+  else if(state.access?.rol==="bienestar" || name.includes("carolina")) $("#taskGroup").value="Jefes / Coordinadores";
   else if(state.access?.rol==="gerencia") $("#taskGroup").value="Otras solicitudes";
 }
 
