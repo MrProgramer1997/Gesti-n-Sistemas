@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#004AA1" />
+  <title>Gestión Sistemas · Club Campestre Pereira</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div id="toast" class="toast" aria-live="polite"></div>
+
+  <section id="loginView" class="login-shell">
+    <div class="login-card">
+      <div class="brand-mark">CCCP</div>
+      <p class="eyebrow">Club Campestre de Pereira</p>
+      <h1>Gestión Sistemas</h1>
+      <p class="muted">Centro de Control de Sistemas e Innovación</p>
+      <form id="loginForm" class="stack">
+        <label>Correo<input id="loginEmail" type="email" autocomplete="username" required /></label>
+        <label>Contraseña<input id="loginPassword" type="password" autocomplete="current-password" required /></label>
+        <button class="btn primary" type="submit">Ingresar</button>
+        <p id="loginMessage" class="form-message"></p>
+      </form>
+    </div>
+  </section>
+
+  <div id="appView" class="app hidden">
+    <aside class="sidebar">
+      <div>
+        <div class="logo-row"><div class="brand-mark small">CCCP</div><div><strong>Gestión Sistemas</strong><span>CCCP</span></div></div>
+        <nav id="nav">
+          <button class="nav-btn active" data-view="inicio">Inicio</button>
+          <button class="nav-btn" data-view="solicitudes">Solicitudes</button>
+          <button class="nav-btn" data-view="proyectos">Proyectos</button>
+          <button class="nav-btn" data-view="redes">Redes</button>
+          <button class="nav-btn" data-view="desarrollos">Desarrollos</button>
+          <button class="nav-btn" data-view="historial">Historial</button>
+        </nav>
+      </div>
+      <div class="session-box">
+        <strong id="sessionName">Usuario</strong>
+        <span id="sessionRole">Rol</span>
+        <button id="logoutBtn" class="btn ghost">Cerrar sesión</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Sistemas e Innovación</p>
+          <h1 id="viewTitle">Centro de Control</h1>
+        </div>
+        <div class="top-actions">
+          <input id="searchInput" class="search" type="search" placeholder="Buscar proyecto, tarea, red, proveedor..." />
+          <button id="reposBtn" class="btn secondary">Desarrollos realizados</button>
+          <button id="newTaskBtn" class="btn primary">+ Nueva tarea</button>
+        </div>
+      </header>
+
+      <section id="stats" class="stats"></section>
+      <section id="content"></section>
+    </main>
+  </div>
+
+  <dialog id="detailDialog" class="modal"><div id="detailContent"></div></dialog>
+  <dialog id="taskDialog" class="modal">
+    <form id="taskForm" class="modal-card">
+      <div class="modal-head"><div><p class="eyebrow">Nueva solicitud</p><h2>Crear tarea</h2></div><button type="button" class="icon-btn" data-close="taskDialog">×</button></div>
+      <label>Título<input id="taskTitle" required maxlength="140" /></label>
+      <label>Descripción<textarea id="taskDescription" rows="4"></textarea></label>
+      <div class="form-grid">
+        <label>Prioridad<select id="taskPriority"><option value="P1">P1 · Crítica</option><option value="P2">P2 · Alta</option><option value="P3" selected>P3 · Normal</option><option value="P4">P4 · Mejora</option></select></label>
+        <label>Solicitante<select id="taskGroup"><option>Gerente Laura</option><option>Gerente Conny</option><option>Jefes / Coordinadores</option><option>Otras solicitudes</option></select></label>
+      </div>
+      <div class="form-grid">
+        <label>Proyecto relacionado<select id="taskProject"><option value="">Sin proyecto</option></select></label>
+        <label>Fecha límite<input id="taskDue" type="date" /></label>
+      </div>
+      <button class="btn primary" type="submit">Guardar tarea</button>
+    </form>
+  </dialog>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
