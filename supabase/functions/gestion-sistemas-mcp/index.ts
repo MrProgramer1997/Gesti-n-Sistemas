@@ -32,6 +32,13 @@ const PROFILE_TOOL = {
   _meta: { securitySchemes: OAUTH_SCHEMES, 'openai/profile': true },
 }
 
+const PRIORITY_LEGEND = {
+  P1: 'Crítica',
+  P2: 'Alta',
+  P3: 'Normal',
+  P4: 'Mejora',
+}
+
 Deno.serve(
   pipeline(
     [withOAuthProtectedResource(), withSupabase({ auth: 'user' })],
@@ -69,7 +76,7 @@ Deno.serve(
       }
 
       const handler = createMcpHandler(() => {
-        const server = new McpServer({ name: 'gestion-sistemas-cccp', version: '0.1.0' })
+        const server = new McpServer({ name: 'gestion-sistemas-cccp', version: '0.2.0' })
 
         server.registerTool('mi_perfil', {
           description: 'Devuelve el nombre, correo y rol del usuario conectado a Gestión Sistemas.',
@@ -82,7 +89,7 @@ Deno.serve(
         }, async ({ limite }) => {
           const { data: proyectos, error: e1 } = await supabase
             .from('proyectos')
-            .select('id,titulo,categoria,subcategoria,estado,prioridad,porcentaje,solicitante,fecha_objetivo,updated_at')
+            .select('id,titulo,tipo_registro,categoria,subcategoria,estado,prioridad,porcentaje,solicitante,fecha_objetivo,updated_at')
             .not('estado', 'in', '("Finalizado","Cancelado")')
             .order('destacado', { ascending: false })
             .order('updated_at', { ascending: false })
@@ -96,7 +103,7 @@ Deno.serve(
             .order('created_at', { ascending: false })
             .limit(limite)
           if (e2) throw new Error(e2.message)
-          return jsonText({ proyectos, tareas })
+          return jsonText({ leyenda_prioridades: PRIORITY_LEGEND, proyectos, tareas })
         })
 
         server.registerTool('buscar_proyectos', {
@@ -164,7 +171,7 @@ Deno.serve(
           if (texto) query = query.or(`titulo.ilike.%${texto}%,descripcion.ilike.%${texto}%,solicitante.ilike.%${texto}%`)
           const { data, error } = await query
           if (error) throw new Error(error.message)
-          return jsonText(data)
+          return jsonText({ leyenda_prioridades: PRIORITY_LEGEND, tareas: data })
         })
 
         server.registerTool('consultar_mis_tareas_creadas', {
@@ -184,7 +191,7 @@ Deno.serve(
         })
 
         server.registerTool('crear_tarea', {
-          description: 'Crea una nueva tarea o solicitud para Jhonnier. El sistema atribuye automáticamente el solicitante según la cuenta autenticada. Gerencia y el administrador pueden usarla. No cambia avances técnicos ni cierra proyectos.',
+          description: 'Crea una nueva tarea o solicitud para Jhonnier. Prioridades: P1=Crítica, P2=Alta, P3=Normal, P4=Mejora. El sistema atribuye automáticamente el solicitante según la cuenta autenticada. Gerencia y el administrador pueden usarla. No cambia avances técnicos ni cierra proyectos.',
           inputSchema: z.object({
             titulo: z.string().min(3).max(140),
             descripcion: z.string().max(1500).optional(),
