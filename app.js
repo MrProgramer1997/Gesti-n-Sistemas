@@ -164,7 +164,7 @@ function projectCard(p){
     <div class="card-meta">${esc(p.categoria)} · ${esc(p.estado)}</div>
     <div class="card-meta">${esc(p.solicitante||"Sin solicitante")}</div>
     <div class="progress"><span style="width:${Number(p.porcentaje)||0}%"></span></div>
-    <div class="card-meta">Avance registrado: ${Number(p.porcentaje)||0}%</div>
+    <div class="card-meta">${Number(p.porcentaje)>0 || p.estado==="Finalizado" ? "Avance registrado: "+(Number(p.porcentaje)||0)+"%" : "Avance pendiente de actualizar"}</div>
     <div class="tags">${(p.tags||[]).slice(0,5).map(x=>`<span class="tag">${esc(x)}</span>`).join("")}</div>
   </article>`;
 }
@@ -290,6 +290,8 @@ async function showProject(id){
   if(!p) return;
   const tasks=state.tasks.filter(t=>t.proyecto_id===id);
   const isAdmin=state.access?.rol==="admin";
+  const repoInfo=state.repos.find(r=>r.proyecto_id===id);
+  const publicUrl=repoInfo?.public_url||null;
 
   $("#detailContent").innerHTML=`<div class="modal-card">
     <div class="modal-head">
@@ -300,10 +302,11 @@ async function showProject(id){
     <div class="detail-grid">
       <div class="detail-box"><span>Estado</span><strong>${esc(p.estado)}</strong></div>
       <div class="detail-box"><span>Prioridad</span><strong>${esc(priorityLabel(p.prioridad))}</strong></div>
-      <div class="detail-box"><span>Avance registrado</span><strong>${Number(p.porcentaje)||0}%</strong></div>
+      <div class="detail-box"><span>Avance</span><strong>${Number(p.porcentaje)>0 || p.estado==="Finalizado" ? (Number(p.porcentaje)||0)+"%" : "Pendiente de actualizar"}</strong></div>
       <div class="detail-box"><span>Solicitante</span><strong>${esc(p.solicitante||"—")}</strong></div>
     </div>
-    ${p.github_url?`<p><a href="${esc(p.github_url)}" target="_blank" rel="noopener">Abrir repositorio GitHub ↗</a></p>`:""}
+    ${publicUrl?`<p><a href="${esc(publicUrl)}" target="_blank" rel="noopener">Abrir desarrollo público ↗</a></p>`:""}
+    ${isAdmin && p.github_url?`<p><a href="${esc(p.github_url)}" target="_blank" rel="noopener">Abrir repositorio técnico ↗</a></p>`:""}
     ${p.onedrive_url?`<p><a href="${esc(p.onedrive_url)}" target="_blank" rel="noopener">Abrir documentación ↗</a></p>`:""}
     ${isAdmin?`
       <div class="form-grid">
@@ -384,13 +387,15 @@ async function showTask(id){
 function showRepos(){
   $("#detailContent").innerHTML=`<div class="modal-card">
     <div class="modal-head">
-      <div><p class="eyebrow">GitHub · 2026</p><h2>Desarrollos realizados</h2><p class="muted">Repositorios institucionales registrados para 2026.</p></div>
+      <div><p class="eyebrow">Desarrollos · 2026</p><h2>Desarrollos realizados</h2><p class="muted">Acceso a las versiones públicas. La configuración técnica del repositorio no se muestra en esta vista.</p></div>
       <button class="icon-btn" id="closeDetail">×</button>
     </div>
     <div class="repo-list">${state.repos.map(r=>`
       <div class="repo-card">
         <div><strong>${esc(r.nombre)}</strong><div class="card-meta">${esc(r.descripcion||"")}</div></div>
-        <a href="${esc(r.url)}" target="_blank" rel="noopener">Abrir GitHub ↗</a>
+        ${r.public_url
+          ? `<a href="${esc(r.public_url)}" target="_blank" rel="noopener">Ver desarrollo ↗</a>`
+          : `<span class="card-meta">Sin enlace público configurado</span>`}
       </div>`).join("")}</div>
   </div>`;
   $("#detailDialog").showModal();
