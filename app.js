@@ -162,7 +162,7 @@ function projectCard(p){
     </div>
     <h3 class="card-title">${esc(p.titulo)}</h3>
     <div class="card-meta">${esc(p.categoria)} · ${esc(p.estado)}</div>
-    <div class="card-meta">${esc(p.solicitante||"Sin solicitante")}</div>
+    <div class="card-meta">${p.area_responsable ? "Área responsable: "+esc(p.area_responsable) : esc(p.solicitante||"Sin solicitante")}</div>
     <div class="progress"><span style="width:${Number(p.porcentaje)||0}%"></span></div>
     <div class="card-meta">${Number(p.porcentaje)>0 || p.estado==="Finalizado" ? "Avance registrado: "+(Number(p.porcentaje)||0)+"%" : "Avance pendiente de actualizar"}</div>
     <div class="tags">${(p.tags||[]).slice(0,5).map(x=>`<span class="tag">${esc(x)}</span>`).join("")}</div>
@@ -171,23 +171,28 @@ function projectCard(p){
 
 function taskCard(t){
   const origin=ORIGINS[t.origen]||t.origen||"—";
+  const subCount=state.tasks.filter(s=>s.parent_task_id===t.id).length;
   return `<article class="task-card" data-task="${t.id}">
     <div class="card-top">${priorityPill(t.prioridad)}<span class="pill">${esc(t.estado)}</span></div>
     <h3 class="card-title">${esc(t.titulo)}</h3>
     <div class="card-meta">${esc(t.solicitante||"")} ${t.fecha_limite?"· vence "+esc(t.fecha_limite):""}</div>
-    <div class="tags"><span class="tag">Origen: ${esc(origin)}</span>${t.proyecto_id?'<span class="tag">Con proyecto</span>':''}</div>
+    <div class="tags">
+      <span class="tag">Origen: ${esc(origin)}</span>
+      ${t.proyecto_id?'<span class="tag">Con proyecto</span>':''}
+      ${subCount?`<span class="tag">${subCount} subtarea${subCount===1?"":"s"}</span>`:""}
+    </div>
   </article>`;
 }
 
 function renderStats(){
   const working=state.projects.filter(p=>NOW_STATES.includes(p.estado)).length;
   const waiting=state.projects.filter(p=>WAIT_STATES.includes(p.estado)).length;
-  const openTasks=state.tasks.filter(t=>!CLOSED_TASK_STATES.includes(t.estado)).length;
+  const openTasks=state.tasks.filter(t=>!t.parent_task_id && !CLOSED_TASK_STATES.includes(t.estado)).length;
   const done=state.projects.filter(p=>p.estado==="Finalizado").length;
   $("#stats").innerHTML=[
     ["En trabajo ahora",working],
     ["En seguimiento / espera",waiting],
-    ["Tareas pendientes",openTasks],
+    ["Tareas principales",openTasks],
     ["Finalizados 2026",done]
   ].map(([a,b])=>`<div class="stat"><span>${a}</span><strong>${b}</strong></div>`).join("");
 }
@@ -217,7 +222,7 @@ function render(){
 function renderHome(c){
   const now=filteredProjects().filter(p=>NOW_STATES.includes(p.estado)).slice(0,9);
   const waiting=filteredProjects().filter(p=>WAIT_STATES.includes(p.estado)).slice(0,6);
-  const tasks=filteredTasks().filter(t=>!CLOSED_TASK_STATES.includes(t.estado)).slice(0,8);
+  const tasks=filteredTasks().filter(t=>!t.parent_task_id && !CLOSED_TASK_STATES.includes(t.estado)).slice(0,8);
 
   c.innerHTML=`
     <div class="section-head"><div><p class="eyebrow">Trabajo actual</p><h2>En ejecución</h2></div><div class="card-meta">${now.length} visibles</div></div>
@@ -226,7 +231,7 @@ function renderHome(c){
     <div class="section-head"><div><p class="eyebrow">Dependencias</p><h2>En seguimiento o espera</h2></div><div class="card-meta">${waiting.length} visibles</div></div>
     <div class="grid">${waiting.map(projectCard).join("")||'<div class="empty">No hay proyectos esperando seguimiento.</div>'}</div>
 
-    <div class="section-head"><div><p class="eyebrow">Acciones concretas</p><h2>Tareas pendientes recientes</h2></div></div>
+    <div class="section-head"><div><p class="eyebrow">Acciones concretas</p><h2>Tareas principales pendientes</h2></div></div>
     <div class="grid">${tasks.map(taskCard).join("")||'<div class="empty">No hay tareas pendientes.</div>'}</div>`;
 }
 
@@ -259,7 +264,7 @@ function renderProjects(c){
 
 function renderTasks(c){
   const groups=["Gerente Laura","Gerente Conny","Jefes / Coordinadores","Otras solicitudes"];
-  const tasks=filteredTasks().filter(t=>!CLOSED_TASK_STATES.includes(t.estado));
+  const tasks=filteredTasks().filter(t=>!t.parent_task_id && !CLOSED_TASK_STATES.includes(t.estado));
   const closed=filteredTasks().filter(t=>CLOSED_TASK_STATES.includes(t.estado)).length;
 
   c.innerHTML=`
@@ -289,9 +294,36 @@ async function showProject(id){
   const p=state.projects.find(x=>x.id===id);
   if(!p) return;
   const tasks=state.tasks.filter(t=>t.proyecto_id===id);
+  const roots=tasks.filter(t=>!t.parent_task_id);
   const isAdmin=state.access?.rol==="admin";
   const repoInfo=state.repos.find(r=>r.proyecto_id===id);
   const publicUrl=repoInfo?.public_url||null;
+  const follow=Array.isArray(p.seguimiento)?p.seguimiento:[];
+
+  const childrenOf=(parentId)=>tasks.filter(t=>t.parent_task_id===parentId);
+  const treeHtml=roots.map(t=>{
+    const children=childrenOf(t.id);
+    return `<div class="task-line" data-task="${t.id}">
+      <div style="width:100%">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
+          <div>
+            <strong>${esc(t.titulo)}</strong>
+            <div class="card-meta">${esc(t.estado)} · ${esc(priorityLabel(t.prioridad))}</div>
+          </div>
+          <span class="pill">${children.length} subtarea${children.length===1?"":"s"}</span>
+        </div>
+        ${children.length?`<div style="margin-top:10px;padding-left:16px;border-left:2px solid #dbe7f5">
+          ${children.map(s=>`<div class="task-line" data-task="${s.id}" style="padding:8px 0">
+            <div>
+              <strong>${esc(s.titulo)}</strong>
+              <div class="card-meta">${esc(s.estado)} · ${esc(priorityLabel(s.prioridad))}</div>
+            </div>
+            <span class="pill">${esc(s.estado)}</span>
+          </div>`).join("")}
+        </div>`:""}
+      </div>
+    </div>`;
+  }).join("");
 
   $("#detailContent").innerHTML=`<div class="modal-card">
     <div class="modal-head">
@@ -303,27 +335,29 @@ async function showProject(id){
       <div class="detail-box"><span>Estado</span><strong>${esc(p.estado)}</strong></div>
       <div class="detail-box"><span>Prioridad</span><strong>${esc(priorityLabel(p.prioridad))}</strong></div>
       <div class="detail-box"><span>Avance</span><strong>${Number(p.porcentaje)>0 || p.estado==="Finalizado" ? (Number(p.porcentaje)||0)+"%" : "Pendiente de actualizar"}</strong></div>
-      <div class="detail-box"><span>Solicitante</span><strong>${esc(p.solicitante||"—")}</strong></div>
+      <div class="detail-box"><span>Área responsable</span><strong>${esc(p.area_responsable||"—")}</strong></div>
     </div>
+    ${follow.length?`<p><strong>Seguimiento:</strong> ${follow.map(esc).join(" · ")}</p>`:""}
     ${publicUrl?`<p><a href="${esc(publicUrl)}" target="_blank" rel="noopener">Abrir desarrollo público ↗</a></p>`:""}
     ${isAdmin && p.github_url?`<p><a href="${esc(p.github_url)}" target="_blank" rel="noopener">Abrir repositorio técnico ↗</a></p>`:""}
-    ${p.onedrive_url?`<p><a href="${esc(p.onedrive_url)}" target="_blank" rel="noopener">Abrir documentación ↗</a></p>`:""}
+    ${p.onedrive_url?`<p><a href="${esc(p.onedrive_url)}" target="_blank" rel="noopener">Abrir documentación en OneDrive ↗</a></p>`:""}
     ${isAdmin?`
       <div class="form-grid">
         <label>Estado<select id="editStatus">${["Nuevo","En analisis","Programado","En trabajo","En pruebas","En seguimiento","Esperando informacion","Esperando proveedor","Pausado","Finalizado","Cancelado"].map(s=>`<option ${s===p.estado?"selected":""}>${s}</option>`).join("")}</select></label>
         <label>Avance %<input id="editProgress" type="number" min="0" max="100" value="${p.porcentaje}" /></label>
       </div>
       <button id="saveProject" class="btn primary">Guardar avance</button>`:""}
-    <div class="section-head"><div><p class="eyebrow">Trabajo derivado</p><h3>${tasks.length} tareas relacionadas</h3></div></div>
-    <div class="task-list">${tasks.map(t=>`
-      <div class="task-line">
-        <div><strong>${esc(t.titulo)}</strong><div class="card-meta">${esc(t.estado)} · ${esc(priorityLabel(t.prioridad))} · ${esc(ORIGINS[t.origen]||t.origen||"")}</div></div>
-        <span class="pill">${esc(t.estado)}</span>
-      </div>`).join("")||'<div class="empty">Este proyecto no tiene tareas hijas todavía.</div>'}</div>
+    <div class="section-head"><div><p class="eyebrow">Estructura del proyecto</p><h3>${roots.length} tareas principales · ${tasks.length-roots.length} subtareas</h3></div></div>
+    <div class="task-list">${treeHtml||'<div class="empty">Este proyecto no tiene tareas todavía.</div>'}</div>
   </div>`;
 
   $("#detailDialog").showModal();
   $("#closeDetail").onclick=()=>$("#detailDialog").close();
+  $("#detailDialog").querySelectorAll("[data-task]").forEach(el=>el.addEventListener("click",e=>{
+    e.stopPropagation();
+    $("#detailDialog").close();
+    showTask(el.dataset.task);
+  }));
 
   if(isAdmin) $("#saveProject").onclick=async()=>{
     const {error}=await supabase.from("proyectos").update({
@@ -341,12 +375,14 @@ async function showTask(id){
   const t=state.tasks.find(x=>x.id===id);
   if(!t) return;
   const project=state.projects.find(p=>p.id===t.proyecto_id);
+  const parent=state.tasks.find(p=>p.id===t.parent_task_id);
+  const children=state.tasks.filter(s=>s.parent_task_id===t.id);
   const isAdmin=state.access?.rol==="admin";
   const origin=ORIGINS[t.origen]||t.origen||"—";
 
   $("#detailContent").innerHTML=`<div class="modal-card">
     <div class="modal-head">
-      <div><p class="eyebrow">Tarea · ${esc(origin)}</p><h2>${esc(t.titulo)}</h2></div>
+      <div><p class="eyebrow">${t.parent_task_id?"Subtarea":"Tarea principal"} · ${esc(origin)}</p><h2>${esc(t.titulo)}</h2></div>
       <button class="icon-btn" id="closeDetail">×</button>
     </div>
     <p class="muted">${esc(t.descripcion||"Sin descripción.")}</p>
@@ -356,9 +392,15 @@ async function showTask(id){
       <div class="detail-box"><span>Solicitante</span><strong>${esc(t.solicitante||"—")}</strong></div>
       <div class="detail-box"><span>Fecha límite</span><strong>${esc(t.fecha_limite||"Sin definir")}</strong></div>
     </div>
-    ${project?`<p><strong>Proyecto relacionado:</strong> ${esc(project.titulo)}</p>`:""}
+    ${project?`<p><strong>Proyecto:</strong> ${esc(project.titulo)}</p>`:""}
+    ${parent?`<p><strong>Tarea principal:</strong> ${esc(parent.titulo)}</p>`:""}
     ${t.origen_referencia?`<p><strong>Referencia de origen:</strong> ${esc(t.origen_referencia)}${t.origen_fecha?" · "+esc(fmt(t.origen_fecha)):""}</p>`:""}
     ${t.origen_url?`<p><a href="${esc(t.origen_url)}" target="_blank" rel="noopener">Abrir origen ↗</a></p>`:""}
+    ${children.length?`<div class="section-head"><div><p class="eyebrow">Desglose</p><h3>${children.length} subtareas</h3></div></div>
+      <div class="task-list">${children.map(s=>`<div class="task-line" data-task="${s.id}">
+        <div><strong>${esc(s.titulo)}</strong><div class="card-meta">${esc(s.estado)} · ${esc(priorityLabel(s.prioridad))}</div></div>
+        <span class="pill">${esc(s.estado)}</span>
+      </div>`).join("")}</div>`:""}
     ${isAdmin?`
       <div class="form-grid">
         <label>Estado<select id="editTaskStatus">${["Nueva","En analisis","Programada","En trabajo","En pruebas","Esperando informacion","Esperando proveedor","Finalizada","Cancelada"].map(s=>`<option ${s===t.estado?"selected":""}>${s}</option>`).join("")}</select></label>
@@ -369,6 +411,11 @@ async function showTask(id){
 
   $("#detailDialog").showModal();
   $("#closeDetail").onclick=()=>$("#detailDialog").close();
+  $("#detailDialog").querySelectorAll("[data-task]").forEach(el=>el.addEventListener("click",e=>{
+    e.stopPropagation();
+    $("#detailDialog").close();
+    showTask(el.dataset.task);
+  }));
 
   if(isAdmin) $("#saveTask").onclick=async()=>{
     const changes={
