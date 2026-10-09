@@ -148,3 +148,39 @@ Ejemplos:
 - Crea una tarea para revisar el WiFi de Eventos, prioridad P2.
 
 El dashboard web funciona como vista visual y administrativa del mismo conjunto de datos.
+
+
+## Reglas de asociación por Gerencia
+
+### Laura
+Todo lo relacionado con infraestructura de red queda asociado a Gerente Laura:
+- Tigo UNE
+- Media Commerce
+- FortiGate / FortiPortal
+- fibra
+- racks
+- switches
+- VLAN
+- puntos de datos / puntos de red
+- cableado estructurado
+- módulos SFP
+- proyectos de conectividad
+
+El solicitante original puede conservarse como referencia, pero el grupo de seguimiento gerencial es `Gerente Laura`.
+
+### Conny / Gerencia Servicios
+Las tareas de módulos de la App asignadas por Gerencia Servicios se agrupan en `Gerente Conny` y, cuando corresponda, se vinculan al frente `Modificaciones APP del Club`.
+
+## Regla para facturas y cotizaciones de proyectos
+
+- Factura de un proyecto aprobado: registrar el proyecto y marcarlo como `Finalizado`, salvo que Jhonnier indique expresamente que aún sigue en ejecución.
+- Cotización / propuesta: registrar el proyecto como `En análisis` o `En seguimiento` y mantenerlo abierto hasta que Jhonnier confirme su cierre.
+- Si una cotización posteriormente tiene factura, actualizar el mismo proyecto; no crear un duplicado.
+
+## OneDrive / SharePoint
+
+La documentación de proyectos se enlaza desde el campo `onedrive_url`.
+
+OneDrive se integra mediante el complemento Microsoft SharePoint, que usa Microsoft Graph y puede acceder a OneDrive y bibliotecas de SharePoint del usuario autenticado.
+
+No se duplican los archivos en Supabase. Gestión Sistemas guarda el enlace a la carpeta o documento correspondiente.
