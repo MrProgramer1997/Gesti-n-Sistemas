@@ -253,11 +253,11 @@ Deno.serve(
         })
 
         server.registerTool('desarrollos_realizados', {
-          description: 'Lista los desarrollos y repositorios GitHub registrados para un año.',
+          description: 'Lista los desarrollos realizados y sus enlaces públicos para un año. No expone la configuración técnica del repositorio a Gerencia.',
           inputSchema: z.object({ anio: z.number().int().min(2020).max(2100).default(2026) }),
         }, async ({ anio }) => {
           const { data, error } = await supabase.from('repositorios_github')
-            .select('nombre,descripcion,url,fecha_creacion_github,anio')
+            .select('nombre,descripcion,public_url,fecha_creacion_github,anio')
             .eq('visible', true).eq('anio', anio).order('fecha_creacion_github', { ascending: true })
           if (error) throw new Error(error.message)
           return jsonText(data)
