@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Autorizar Gestión Sistemas</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="login-shell">
+    <section class="login-card" style="width:min(520px,100%)">
+      <div class="brand-mark">CCCP</div>
+      <p class="eyebrow" style="margin-top:18px">Gestión Sistemas</p>
+      <h1>Conectar con ChatGPT</h1>
+      <p class="muted">Autoriza a ChatGPT para consultar y, según tu rol, crear solicitudes en Gestión Sistemas.</p>
+
+      <div id="loadingBox" class="stack">
+        <p class="muted">Validando solicitud de conexión...</p>
+      </div>
+
+      <form id="authForm" class="stack hidden">
+        <label>Correo institucional
+          <input id="email" type="email" required placeholder="usuario@campestrepereira.com">
+        </label>
+        <button class="btn primary" type="submit">Enviar enlace de acceso</button>
+        <p id="authMessage" class="form-message"></p>
+      </form>
+
+      <div id="consentBox" class="stack hidden">
+        <div class="detail-box">
+          <span>Usuario</span>
+          <strong id="userName"></strong>
+        </div>
+        <div class="detail-box">
+          <span>Aplicación solicitante</span>
+          <strong id="clientName">ChatGPT</strong>
+        </div>
+        <div class="detail-box">
+          <span>Permisos solicitados</span>
+          <strong id="scopeText">Acceso a Gestión Sistemas</strong>
+        </div>
+        <p class="muted">ChatGPT podrá consultar la información autorizada por tu rol. Las acciones de escritura siguen protegidas por los permisos del sistema.</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button id="approveBtn" class="btn primary" type="button">Autorizar</button>
+          <button id="denyBtn" class="btn ghost" type="button">Cancelar</button>
+        </div>
+        <p id="consentMessage" class="form-message"></p>
+      </div>
+
+      <div id="errorBox" class="hidden">
+        <p id="errorMessage" class="form-message"></p>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="./oauth-consent.js"></script>
+</body>
+</html>
