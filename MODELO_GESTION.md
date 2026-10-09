@@ -184,3 +184,40 @@ La documentación de proyectos se enlaza desde el campo `onedrive_url`.
 OneDrive se integra mediante el complemento Microsoft SharePoint, que usa Microsoft Graph y puede acceder a OneDrive y bibliotecas de SharePoint del usuario autenticado.
 
 No se duplican los archivos en Supabase. Gestión Sistemas guarda el enlace a la carpeta o documento correspondiente.
+
+
+## Jerarquía de proyectos
+
+Un proyecto no se divide en múltiples proyectos pequeños cuando forman parte del mismo entregable.
+
+Estructura oficial:
+
+Proyecto
+- Tarea principal
+  - Subtarea
+  - Subtarea
+- Tarea principal
+  - Subtarea
+
+Ejemplo: Sistema de Turnos y Horas Extras
+- Área responsable: Bienestar
+- Seguimiento: Laura Palacio y Bienestar
+- Horas Extras y Nómina
+  - reglas de nocturnas
+  - aprobación por corte
+  - descuentos de almuerzo
+- Marcaciones y BioTime
+  - ZKTeco
+  - Portería
+  - marcaciones sin programación
+- PWA Mis Turnos y notificaciones
+  - notificaciones con app cerrada
+  - persistencia tras actualizaciones
+  - avisos bidireccionales
+- Exportes y reportes
+  - PROSOF
+  - exportes individuales
+- Programación por áreas
+  - Mantenimiento
+
+Regla: casos como exportes individuales, ajustes de la PWA, notificaciones o validaciones no se crean como proyectos nuevos; se registran como tareas o subtareas del proyecto principal.
