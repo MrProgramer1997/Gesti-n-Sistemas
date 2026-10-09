@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.1";
 
 const SUPABASE_URL = "https://ejcspbaiksjuvbkxrkpe.supabase.co";
 const SUPABASE_KEY = "sb_publishable_6nNZwtjkoAezvbxx-m2y8A_VoJTDP5H";
@@ -20,15 +20,19 @@ boot();
 
 $("#loginForm").addEventListener("submit", async e=>{
   e.preventDefault();
-  $("#loginMessage").textContent="Validando...";
-  const email=$("#loginEmail").value.trim();
-  const password=$("#loginPassword").value;
-  const {error}=await supabase.auth.signInWithPassword({email,password});
-  if(error){ $("#loginMessage").textContent="No fue posible ingresar. Verifica usuario y contraseña."; return; }
-  $("#loginMessage").textContent="";
-  const {data:{session}}=await supabase.auth.getSession();
-  state.session=session;
-  await enterApp();
+  $("#loginMessage").textContent="Enviando enlace seguro...";
+  const email=$("#loginEmail").value.trim().toLowerCase();
+  if(!email.endsWith("@campestrepereira.com")){
+    $("#loginMessage").textContent="Usa tu correo institucional @campestrepereira.com.";
+    return;
+  }
+  const {error}=await supabase.auth.signInWithOtp({
+    email,
+    options:{ emailRedirectTo: window.location.href.split("#")[0] }
+  });
+  $("#loginMessage").textContent=error
+    ? "No fue posible enviar el enlace de acceso."
+    : "Revisa tu correo y abre el enlace para ingresar.";
 });
 
 async function enterApp(){
