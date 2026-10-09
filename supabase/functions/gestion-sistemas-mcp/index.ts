@@ -56,6 +56,18 @@ Deno.serve(
         return perfil
       }
 
+      const resolverGrupoSolicitante = (
+        perfil: Perfil,
+        solicitado?: 'Gerente Laura' | 'Gerente Conny' | 'Jefes / Coordinadores' | 'Otras solicitudes',
+      ) => {
+        const email = perfil.email.toLowerCase()
+        if (email === 'gerencia@campestrepereira.com') return 'Gerente Laura'
+        if (email === 'gerenciaservicios@campestrepereira.com') return 'Gerente Conny'
+        if (email === 'dirbienestar@campestrepereira.com') return 'Jefes / Coordinadores'
+        if (email === 'diradministrativa@campestrepereira.com') return 'Jefes / Coordinadores'
+        return solicitado ?? 'Otras solicitudes'
+      }
+
       const handler = createMcpHandler(() => {
         const server = new McpServer({ name: 'gestion-sistemas-cccp', version: '0.1.0' })
 
@@ -172,20 +184,21 @@ Deno.serve(
         })
 
         server.registerTool('crear_tarea', {
-          description: 'Crea una nueva tarea o solicitud para Jhonnier. Gerencia y el administrador pueden usarla. No cambia avances técnicos ni cierra proyectos.',
+          description: 'Crea una nueva tarea o solicitud para Jhonnier. El sistema atribuye automáticamente el solicitante según la cuenta autenticada. Gerencia y el administrador pueden usarla. No cambia avances técnicos ni cierra proyectos.',
           inputSchema: z.object({
             titulo: z.string().min(3).max(140),
             descripcion: z.string().max(1500).optional(),
             prioridad: z.enum(['P1','P2','P3','P4']).default('P3'),
-            grupo_solicitante: z.enum(['Gerente Laura','Gerente Conny','Jefes / Coordinadores','Otras solicitudes']),
+            grupo_solicitante: z.enum(['Gerente Laura','Gerente Conny','Jefes / Coordinadores','Otras solicitudes']).optional(),
             proyecto_id: z.string().uuid().optional(),
             fecha_limite: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
           }),
         }, async ({ titulo, descripcion, prioridad, grupo_solicitante, proyecto_id, fecha_limite }) => {
           const perfil = await getPerfil()
           if (!['admin','gerencia','bienestar'].includes(perfil.rol)) throw new Error('Tu rol no tiene permiso para crear tareas.')
+          const grupo_resuelto = resolverGrupoSolicitante(perfil, grupo_solicitante)
           const { data, error } = await supabase.from('tareas').insert({
-            titulo, descripcion: descripcion ?? null, prioridad, grupo_solicitante,
+            titulo, descripcion: descripcion ?? null, prioridad, grupo_solicitante: grupo_resuelto,
             proyecto_id: proyecto_id ?? null, fecha_limite: fecha_limite ?? null,
             solicitante: perfil.nombre, origen: 'asistente',
           }).select('id,titulo,estado,prioridad,grupo_solicitante,fecha_limite,created_by_email,created_at').single()
