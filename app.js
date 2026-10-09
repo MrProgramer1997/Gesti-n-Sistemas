@@ -8,6 +8,7 @@ const state = { session:null, access:null, projects:[], tasks:[], repos:[], hist
 const $ = (s) => document.querySelector(s);
 const esc = (v="") => String(v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]));
 const fmt = (d) => d ? new Intl.DateTimeFormat("es-CO",{dateStyle:"medium",timeStyle:String(d).includes("T")?"short":undefined}).format(new Date(d)) : "—";
+const fmtMoney = (value,currency="COP") => value===null || value===undefined || value==="" ? null : new Intl.NumberFormat("es-CO",{style:"currency",currency:currency||"COP",maximumFractionDigits:0}).format(Number(value));
 const toast = (m) => { const el=$("#toast"); el.textContent=m; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),2600); };
 
 const PRIORITIES = {
@@ -139,7 +140,7 @@ $("#taskForm").addEventListener("submit",async e=>{
 function filteredProjects(){
   const q=state.search;
   return state.projects.filter(p=>{
-    const text=[p.titulo,p.tipo_registro,p.categoria,p.subcategoria,p.descripcion,p.estado,p.solicitante,...(p.tags||[])].join(" ").toLowerCase();
+    const text=[p.titulo,p.tipo_registro,p.categoria,p.subcategoria,p.descripcion,p.estado,p.solicitante,p.proveedor,p.numero_factura,p.numero_cotizacion,...(p.tags||[])].join(" ").toLowerCase();
     if(q && !text.includes(q)) return false;
     if(state.view==="redes") return p.categoria==="Redes e infraestructura";
     if(state.view==="desarrollos") return ["Desarrollos","Integraciones","Sistemas","Innovación"].includes(p.categoria);
@@ -163,6 +164,7 @@ function projectCard(p){
     <h3 class="card-title">${esc(p.titulo)}</h3>
     <div class="card-meta">${esc(p.categoria)} · ${esc(p.estado)}</div>
     <div class="card-meta">${p.area_responsable ? "Área responsable: "+esc(p.area_responsable) : esc(p.solicitante||"Sin solicitante")}</div>
+    ${p.costo_proyecto!==null && p.costo_proyecto!==undefined ? `<div style="margin:10px 0 4px;font-weight:800;font-size:18px">${esc(fmtMoney(p.costo_proyecto,p.moneda)||"")}</div><div class="card-meta">${p.proveedor?"Proveedor: "+esc(p.proveedor):"Costo del proyecto"}</div>` : ""}
     <div class="progress"><span style="width:${Number(p.porcentaje)||0}%"></span></div>
     <div class="card-meta">${Number(p.porcentaje)>0 || p.estado==="Finalizado" ? "Avance registrado: "+(Number(p.porcentaje)||0)+"%" : "Avance pendiente de actualizar"}</div>
     <div class="tags">${(p.tags||[]).slice(0,5).map(x=>`<span class="tag">${esc(x)}</span>`).join("")}</div>
@@ -336,6 +338,10 @@ async function showProject(id){
       <div class="detail-box"><span>Prioridad</span><strong>${esc(priorityLabel(p.prioridad))}</strong></div>
       <div class="detail-box"><span>Avance</span><strong>${Number(p.porcentaje)>0 || p.estado==="Finalizado" ? (Number(p.porcentaje)||0)+"%" : "Pendiente de actualizar"}</strong></div>
       <div class="detail-box"><span>Área responsable</span><strong>${esc(p.area_responsable||"—")}</strong></div>
+      <div class="detail-box"><span>Costo del proyecto</span><strong>${esc(fmtMoney(p.costo_proyecto,p.moneda)||"Sin registrar")}</strong></div>
+      <div class="detail-box"><span>Proveedor</span><strong>${esc(p.proveedor||"—")}</strong></div>
+      <div class="detail-box"><span>Factura</span><strong>${esc(p.numero_factura||"—")}</strong></div>
+      <div class="detail-box"><span>Cotización</span><strong>${esc(p.numero_cotizacion||"—")}</strong></div>
     </div>
     ${follow.length?`<p><strong>Seguimiento:</strong> ${follow.map(esc).join(" · ")}</p>`:""}
     ${publicUrl?`<p><a href="${esc(publicUrl)}" target="_blank" rel="noopener">Abrir desarrollo público ↗</a></p>`:""}
