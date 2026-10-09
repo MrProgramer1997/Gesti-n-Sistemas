@@ -16,6 +16,22 @@ const jsonText = (data: unknown) => ({
   content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }],
 })
 
+const OAUTH_SCHEMES = [{ type: 'oauth2' as const, scopes: ['email', 'profile'] }]
+const READ_TOOL = {
+  securitySchemes: OAUTH_SCHEMES,
+  _meta: { securitySchemes: OAUTH_SCHEMES },
+  annotations: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
+}
+const WRITE_TOOL = {
+  securitySchemes: OAUTH_SCHEMES,
+  _meta: { securitySchemes: OAUTH_SCHEMES },
+  annotations: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
+}
+const PROFILE_TOOL = {
+  ...READ_TOOL,
+  _meta: { securitySchemes: OAUTH_SCHEMES, 'openai/profile': true },
+}
+
 Deno.serve(
   pipeline(
     [withOAuthProtectedResource(), withSupabase({ auth: 'user' })],
