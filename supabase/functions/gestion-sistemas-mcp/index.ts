@@ -181,8 +181,6 @@ Deno.serve(
           inputSchema: z.object({
             grupo_solicitante: z.enum(['Gerente Laura','Gerente Conny','Jefes / Coordinadores','Otras solicitudes']).optional(),
             prioridad: z.enum(['P1','P2','P3','P4']).optional(),
-            area_responsable: z.string().max(100).optional(),
-            seguimiento: z.array(z.string().max(100)).max(10).optional(),
             proyecto_id: z.string().uuid().optional(),
             texto: z.string().max(120).optional(),
             incluir_subtareas: z.boolean().default(false),
@@ -293,6 +291,8 @@ Deno.serve(
             porcentaje: z.number().int().min(0).max(100).optional(),
             descripcion: z.string().max(3000).optional(),
             prioridad: z.enum(['P1','P2','P3','P4']).optional(),
+            area_responsable: z.string().max(100).optional(),
+            seguimiento: z.array(z.string().max(100)).max(10).optional(),
           }),
         }, async ({ id, ...cambios }) => {
           await requireAdmin()
