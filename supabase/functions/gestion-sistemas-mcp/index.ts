@@ -104,7 +104,7 @@ Deno.serve(
         }, async ({ limite }) => {
           const { data: proyectos, error: e1 } = await supabase
             .from('proyectos')
-            .select('id,titulo,tipo_registro,categoria,subcategoria,estado,prioridad,porcentaje,solicitante,area_responsable,seguimiento,fecha_objetivo,updated_at')
+            .select('id,titulo,tipo_registro,categoria,subcategoria,estado,prioridad,porcentaje,solicitante,area_responsable,seguimiento,costo_proyecto,moneda,proveedor,numero_factura,fecha_factura,numero_cotizacion,fecha_objetivo,updated_at')
             .not('estado', 'in', '("Finalizado","Cancelado")')
             .order('destacado', { ascending: false })
             .order('updated_at', { ascending: false })
@@ -137,7 +137,7 @@ Deno.serve(
         }, async ({ texto, categoria, estado, limite }) => {
           let query = supabase
             .from('proyectos')
-            .select('id,titulo,tipo_registro,categoria,subcategoria,descripcion,estado,prioridad,porcentaje,solicitante,area_responsable,seguimiento,fecha_inicio,fecha_objetivo,fecha_cierre,github_url,onedrive_url,tags,updated_at')
+            .select('id,titulo,tipo_registro,categoria,subcategoria,descripcion,estado,prioridad,porcentaje,solicitante,area_responsable,seguimiento,costo_proyecto,moneda,proveedor,numero_factura,fecha_factura,numero_cotizacion,fecha_inicio,fecha_objetivo,fecha_cierre,github_url,onedrive_url,tags,updated_at')
             .or(`titulo.ilike.%${texto}%,descripcion.ilike.%${texto}%,subcategoria.ilike.%${texto}%`)
             .order('updated_at', { ascending: false })
             .limit(limite)
@@ -293,6 +293,12 @@ Deno.serve(
             prioridad: z.enum(['P1','P2','P3','P4']).optional(),
             area_responsable: z.string().max(100).optional(),
             seguimiento: z.array(z.string().max(100)).max(10).optional(),
+            costo_proyecto: z.number().nonnegative().optional(),
+            moneda: z.enum(['COP','USD']).optional(),
+            proveedor: z.string().max(160).optional(),
+            numero_factura: z.string().max(120).nullable().optional(),
+            fecha_factura: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+            numero_cotizacion: z.string().max(120).nullable().optional(),
           }),
         }, async ({ id, ...cambios }) => {
           await requireAdmin()
