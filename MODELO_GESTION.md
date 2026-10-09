@@ -221,3 +221,58 @@ Ejemplo: Sistema de Turnos y Horas Extras
   - Mantenimiento
 
 Regla: casos como exportes individuales, ajustes de la PWA, notificaciones o validaciones no se crean como proyectos nuevos; se registran como tareas o subtareas del proyecto principal.
+
+
+## Ingesta documental de proyectos (facturas y cotizaciones)
+
+Reglas oficiales para procesar PDFs de proveedores:
+
+### Clasificación por proveedor
+- Todo documento/proyecto de **Fredy Flores** se clasifica como **Redes e infraestructura** y se asocia a **Gerente Laura**.
+- Todo documento/proyecto de **TekSoluciones / Tek Soluciones** se clasifica como **Redes e infraestructura** y se asocia a **Gerente Laura**.
+- Estas reglas prevalecen sobre la descripción técnica puntual del documento.
+
+### Facturas
+Una factura confirma que el proyecto fue aprobado/ejecutado.
+
+Al encontrar una factura:
+- crear o actualizar un único proyecto;
+- estado: **Finalizado**;
+- avance: **100 %**;
+- registrar proveedor;
+- registrar número y fecha de factura;
+- registrar **costo del proyecto**;
+- moneda: COP salvo que el documento indique otra;
+- si existe cotización correspondiente, no crear otro proyecto por la cotización;
+- conservar la referencia de cotización en el mismo proyecto cuando pueda relacionarse.
+
+### Cotizaciones
+Si existe una cotización pero no una factura asociada:
+- no afirmar que el proyecto fue implementado;
+- registrar el proyecto como **En análisis** o **En seguimiento**;
+- avance: 0 % salvo evidencia adicional;
+- registrar número de cotización y proveedor;
+- no marcar como Finalizado;
+- la ausencia de factura puede significar que el proyecto no se implementó, sigue pendiente o finalmente se ejecutó con otro proveedor.
+
+### Deduplicación factura/cotización
+Para decidir si factura y cotización corresponden al mismo proyecto se comparan, en este orden:
+1. proveedor;
+2. número de cotización/factura y referencias cruzadas;
+3. descripción/alcance;
+4. sede/área/equipos;
+5. fechas;
+6. valores.
+
+Si hay coincidencia razonable, se mantiene un solo proyecto y la factura tiene precedencia sobre la cotización.
+
+### Costo visible
+Los proyectos pueden almacenar:
+- `costo_proyecto`
+- `moneda`
+- `proveedor`
+- `numero_factura`
+- `fecha_factura`
+- `numero_cotizacion`
+
+El costo debe mostrarse directamente en la tarjeta del proyecto para facilitar lectura gerencial.
