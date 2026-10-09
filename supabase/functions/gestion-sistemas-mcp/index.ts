@@ -39,6 +39,21 @@ const PRIORITY_LEGEND = {
   P4: 'Mejora',
 }
 
+const buildTaskTree = (tasks: any[] = []) => {
+  const byParent = new Map<string | null, any[]>()
+  for (const task of tasks) {
+    const key = task.parent_task_id ?? null
+    const list = byParent.get(key) ?? []
+    list.push(task)
+    byParent.set(key, list)
+  }
+  const build = (task: any): any => ({
+    ...task,
+    subtareas: (byParent.get(task.id) ?? []).map(build),
+  })
+  return (byParent.get(null) ?? []).map(build)
+}
+
 Deno.serve(
   pipeline(
     [withOAuthProtectedResource(), withSupabase({ auth: 'user' })],
@@ -76,7 +91,7 @@ Deno.serve(
       }
 
       const handler = createMcpHandler(() => {
-        const server = new McpServer({ name: 'gestion-sistemas-cccp', version: '0.2.0' })
+        const server = new McpServer({ name: 'gestion-sistemas-cccp', version: '0.3.0' })
 
         server.registerTool('mi_perfil', {
           description: 'Devuelve el nombre, correo y rol del usuario conectado a Gestión Sistemas.',
@@ -89,7 +104,7 @@ Deno.serve(
         }, async ({ limite }) => {
           const { data: proyectos, error: e1 } = await supabase
             .from('proyectos')
-            .select('id,titulo,tipo_registro,categoria,subcategoria,estado,prioridad,porcentaje,solicitante,fecha_objetivo,updated_at')
+            .select('id,titulo,tipo_registro,categoria,subcategoria,estado,prioridad,porcentaje,solicitante,area_responsable,seguimiento,fecha_objetivo,updated_at')
             .not('estado', 'in', '("Finalizado","Cancelado")')
             .order('destacado', { ascending: false })
             .order('updated_at', { ascending: false })
@@ -98,12 +113,17 @@ Deno.serve(
 
           const { data: tareas, error: e2 } = await supabase
             .from('tareas')
-            .select('id,proyecto_id,titulo,descripcion,estado,prioridad,solicitante,grupo_solicitante,fecha_limite,created_at,updated_at')
+            .select('id,proyecto_id,parent_task_id,titulo,descripcion,estado,prioridad,solicitante,grupo_solicitante,fecha_limite,created_at,updated_at')
             .not('estado', 'in', '("Finalizada","Cancelada")')
             .order('created_at', { ascending: false })
             .limit(limite)
           if (e2) throw new Error(e2.message)
-          return jsonText({ leyenda_prioridades: PRIORITY_LEGEND, proyectos, tareas })
+          return jsonText({
+            leyenda_prioridades: PRIORITY_LEGEND,
+            proyectos,
+            tareas_principales: (tareas ?? []).filter((t: any) => !t.parent_task_id),
+            subtareas_abiertas: (tareas ?? []).filter((t: any) => !!t.parent_task_id),
+          })
         })
 
         server.registerTool('buscar_proyectos', {
@@ -117,7 +137,7 @@ Deno.serve(
         }, async ({ texto, categoria, estado, limite }) => {
           let query = supabase
             .from('proyectos')
-            .select('id,titulo,categoria,subcategoria,descripcion,estado,prioridad,porcentaje,solicitante,fecha_inicio,fecha_objetivo,fecha_cierre,github_url,onedrive_url,tags,updated_at')
+            .select('id,titulo,tipo_registro,categoria,subcategoria,descripcion,estado,prioridad,porcentaje,solicitante,area_responsable,seguimiento,fecha_inicio,fecha_objetivo,fecha_cierre,github_url,onedrive_url,tags,updated_at')
             .or(`titulo.ilike.%${texto}%,descripcion.ilike.%${texto}%,subcategoria.ilike.%${texto}%`)
             .order('updated_at', { ascending: false })
             .limit(limite)
@@ -145,7 +165,15 @@ Deno.serve(
           const { data: tareas, error: taskError } = await supabase
             .from('tareas').select('*').eq('proyecto_id', proyecto.id).order('created_at', { ascending: false })
           if (taskError) throw new Error(taskError.message)
-          return jsonText({ encontrado: true, proyecto, tareas })
+          return jsonText({
+            encontrado: true,
+            proyecto,
+            tareas: buildTaskTree(tareas ?? []),
+            resumen: {
+              tareas_principales: (tareas ?? []).filter((t: any) => !t.parent_task_id).length,
+              subtareas: (tareas ?? []).filter((t: any) => !!t.parent_task_id).length,
+            },
+          })
         })
 
         server.registerTool('consultar_pendientes', {
@@ -153,18 +181,22 @@ Deno.serve(
           inputSchema: z.object({
             grupo_solicitante: z.enum(['Gerente Laura','Gerente Conny','Jefes / Coordinadores','Otras solicitudes']).optional(),
             prioridad: z.enum(['P1','P2','P3','P4']).optional(),
+            area_responsable: z.string().max(100).optional(),
+            seguimiento: z.array(z.string().max(100)).max(10).optional(),
             proyecto_id: z.string().uuid().optional(),
             texto: z.string().max(120).optional(),
+            incluir_subtareas: z.boolean().default(false),
             limite: z.number().int().min(1).max(100).default(40),
           }),
-        }, async ({ grupo_solicitante, prioridad, proyecto_id, texto, limite }) => {
+        }, async ({ grupo_solicitante, prioridad, proyecto_id, texto, incluir_subtareas, limite }) => {
           let query = supabase
             .from('tareas')
-            .select('id,proyecto_id,titulo,descripcion,estado,prioridad,solicitante,grupo_solicitante,origen,fecha_limite,created_by_email,created_at,updated_at')
+            .select('id,proyecto_id,parent_task_id,titulo,descripcion,estado,prioridad,solicitante,grupo_solicitante,origen,fecha_limite,created_by_email,created_at,updated_at')
             .not('estado', 'in', '("Finalizada","Cancelada")')
             .order('prioridad', { ascending: true })
             .order('created_at', { ascending: false })
             .limit(limite)
+          if (!incluir_subtareas) query = query.is('parent_task_id', null)
           if (grupo_solicitante) query = query.eq('grupo_solicitante', grupo_solicitante)
           if (prioridad) query = query.eq('prioridad', prioridad)
           if (proyecto_id) query = query.eq('proyecto_id', proyecto_id)
@@ -191,24 +223,41 @@ Deno.serve(
         })
 
         server.registerTool('crear_tarea', {
-          description: 'Crea una nueva tarea o solicitud para Jhonnier. Prioridades: P1=Crítica, P2=Alta, P3=Normal, P4=Mejora. El sistema atribuye automáticamente el solicitante según la cuenta autenticada. Gerencia y el administrador pueden usarla. No cambia avances técnicos ni cierra proyectos.',
+          description: 'Crea una tarea principal o una subtarea para Jhonnier. Para crear una subtarea usa tarea_padre_id; el proyecto se hereda automáticamente de la tarea padre. Prioridades: P1=Crítica, P2=Alta, P3=Normal, P4=Mejora. Gerencia y el administrador pueden usarla. No cambia avances técnicos ni cierra proyectos.',
           inputSchema: z.object({
             titulo: z.string().min(3).max(140),
             descripcion: z.string().max(1500).optional(),
             prioridad: z.enum(['P1','P2','P3','P4']).default('P3'),
             grupo_solicitante: z.enum(['Gerente Laura','Gerente Conny','Jefes / Coordinadores','Otras solicitudes']).optional(),
             proyecto_id: z.string().uuid().optional(),
+            tarea_padre_id: z.string().uuid().optional(),
             fecha_limite: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
           }),
-        }, async ({ titulo, descripcion, prioridad, grupo_solicitante, proyecto_id, fecha_limite }) => {
+        }, async ({ titulo, descripcion, prioridad, grupo_solicitante, proyecto_id, tarea_padre_id, fecha_limite }) => {
           const perfil = await getPerfil()
           if (!['admin','gerencia','bienestar'].includes(perfil.rol)) throw new Error('Tu rol no tiene permiso para crear tareas.')
           const grupo_resuelto = resolverGrupoSolicitante(perfil, grupo_solicitante)
+
+          let proyecto_resuelto = proyecto_id ?? null
+          if (tarea_padre_id) {
+            const { data: padre, error: padreError } = await supabase
+              .from('tareas')
+              .select('id,proyecto_id')
+              .eq('id', tarea_padre_id)
+              .single()
+            if (padreError || !padre) throw new Error('La tarea padre indicada no existe.')
+            if (proyecto_id && padre.proyecto_id !== proyecto_id) {
+              throw new Error('La tarea padre no pertenece al proyecto indicado.')
+            }
+            proyecto_resuelto = padre.proyecto_id
+          }
+
           const { data, error } = await supabase.from('tareas').insert({
             titulo, descripcion: descripcion ?? null, prioridad, grupo_solicitante: grupo_resuelto,
-            proyecto_id: proyecto_id ?? null, fecha_limite: fecha_limite ?? null,
+            proyecto_id: proyecto_resuelto, parent_task_id: tarea_padre_id ?? null,
+            fecha_limite: fecha_limite ?? null,
             solicitante: perfil.nombre, origen: 'asistente',
-          }).select('id,titulo,estado,prioridad,grupo_solicitante,fecha_limite,created_by_email,created_at').single()
+          }).select('id,proyecto_id,parent_task_id,titulo,estado,prioridad,grupo_solicitante,fecha_limite,created_by_email,created_at').single()
           if (error) throw new Error(error.message)
           return jsonText({ creado: true, tarea: data })
         })
@@ -221,10 +270,15 @@ Deno.serve(
             prioridad: z.enum(['P1','P2','P3','P4']).optional(),
             descripcion: z.string().max(2000).optional(),
             fecha_limite: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+            tarea_padre_id: z.string().uuid().nullable().optional(),
           }),
         }, async ({ id, ...cambios }) => {
           await requireAdmin()
           const payload: Record<string, unknown> = { ...cambios }
+          if ('tarea_padre_id' in cambios) {
+            payload.parent_task_id = cambios.tarea_padre_id ?? null
+            delete payload.tarea_padre_id
+          }
           if (cambios.estado === 'Finalizada') payload.fecha_cierre = new Date().toISOString()
           const { data, error } = await supabase.from('tareas').update(payload).eq('id', id).select().single()
           if (error) throw new Error(error.message)
